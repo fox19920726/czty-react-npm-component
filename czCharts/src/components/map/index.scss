@@ -1,0 +1,150 @@
+path.area {
+  stroke: white;
+  stroke-width: 0.25px; /* 0.25 */
+  /* fill: grey; */
+}
+path, text{
+  cursor: pointer;
+}
+rect,circle {
+  opacity: 0.2;
+}
+text{
+  /* text-anchor: middle; */
+  /* font-size: 14px; */
+  user-select:none;
+  fill: #333;
+}
+p{
+  margin: 0;
+  padding: 0;
+}
+a,svg{
+  display: block;
+  /* text-decoration: none; */
+  user-select:none;
+}
+/* 鼠标移上去变幻颜色的动画 */
+.p-a{
+  transition: all 0.25s;
+}
+.p-a:hover{
+  color: 'yellow';
+}
+.p-r{
+  user-select:none;
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  /* display: none; */
+  transition: opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1) 0s, visibility 0.2s cubic-bezier(0.23, 1, 0.32, 1) 0s, transform 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0s;
+  min-width: 200px;
+  min-height: 10px;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #8ed1eb;
+  padding: 10px;
+  left: 0;
+  top: 0;
+  box-shadow: rgb(0 0 0 / 20%) 1px 2px 10px;
+}
+.charts{
+  position: relative;
+}
+#drager{
+  transition: all 0.2s;
+}
+.blankborad{
+  fill: #fff;
+  stroke: #666;
+  stroke-width: 1;
+}
+.edit-circle{
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 3;
+  opacity: 1;
+}
+.polygon, .ing-polygon{
+  fill: blue;
+  opacity: 0.2;
+  stroke: #e0bef9;
+  /* stroke-width: 3; */
+  stroke-linejoin: round;
+}
+.line{
+  stroke: purple;
+}
+.shaper{
+  stroke: #000;
+}
+
+.legend{
+  position: absolute;
+  bottom: 110px;
+  left: 20px;
+  width: 30%;
+  li{
+    width: auto;
+    margin-bottom: 10px;
+    span{
+      display: inline-block;
+      width: 20px;
+      height: 10px;
+      margin-right: 5px;
+      border-radius: 4px;
+      border:1px solid #999;
+    }
+  }
+}
+
+.div-heatmap{
+  pointer-events: none;
+}
+.heatmap{
+  top: 0;
+  left: 0;
+  width: 1000px;
+  height: 1000px;
+  pointer-events: none;
+  .heatmap-canvas{
+    transition: all 0.25s;
+  }
+  .h-c{
+    opacity: 0.6;
+  }
+}
+
+.trans{
+  pointer-events: none;
+}
+
+
+
+.ball {
+  width: 10px;
+  height: 10px;
+  background-image: linear-gradient(transparent, pink);
+  border-radius: 50%;
+  // offset-path: path('M10 80 Q 77.5 10, 145 80 T 280 80');
+  offset-distance: 0%;
+  animation: red-ball 6s linear normal infinite;
+  &:after{
+    position: absolute;
+    content: '';
+    left: 0;
+    top: 0;
+    border-top: 15px solid red;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+}
+}
+
+@keyframes red-ball {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
