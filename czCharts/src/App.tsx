@@ -6,6 +6,7 @@ import Mapr from '@/components/map'
 
 const App: FC = () => {
   const [data, setData] = useState([])
+  const [shapeData, setShapeData] = useState([])
 
   // 图例跟地图的颜色，目前是根据数据里的size分配的颜色，图例的文字
   const legend = {
@@ -79,7 +80,7 @@ const App: FC = () => {
   }
 
   // 绘制后
-  const handleAfterDraw = (shaper, shapeArr, historyi) => {
+  const handleAfterDraw = ({shaper, shapeArr, historyi, closeDraw}) => {
     // console.log('finish draw:', shaper, shapeArr, historyi)
   }
 
@@ -88,20 +89,55 @@ const App: FC = () => {
     console.log('click:', point, item)
   }
 
-  // 图形双击事件
-  const handleDblclick = (shaper, shapeArr, historyi) => {
-    // console.log('dblclick:', shaper, shapeArr, historyi)
-  }
+  // 初始图形
+  // (xy, width=0, height=0)
+  // 原来图形保存的时候，把原数据也保存一下，不然回显的时候
+  // const shapeData = [{
+  //   height: 210,
+  //   type: "rect",
+  //   width: 202,
+  //   x: 84.57257282562696,
+  //   x1: 101.10649777083071,
+  //   y: 49.057649454760025,
+  //   y1: 36.51131732124458
+  // }, {
+  //   center: [70.65788351530698, 35.25131861741529],
+  //   r: 217,
+  //   type: "circle",
+  //   x: 70.65788351530698,
+  //   y: 35.25131861741529  
+  // }, {
+  //   type: "polygon",
+  //   points: [[118.37708273834555, 44.92924081193541],[93.98545088849049, 21.475392188771657],[121.73297839554034, 20.48187640003869]]
+  // }]
 
 
   useEffect(() => {
     getdata()
+    setShapeData([{
+      height: 210,
+      type: "rect",
+      width: 202,
+      x: 84.57257282562696,
+      x1: 101.10649777083071,
+      y: 49.057649454760025,
+      y1: 36.51131732124458
+    }, {
+      center: [70.65788351530698, 35.25131861741529],
+      r: 217,
+      type: "circle",
+      x: 70.65788351530698,
+      y: 35.25131861741529  
+    }, {
+      type: "polygon",
+      points: [[118.37708273834555, 44.92924081193541],[93.98545088849049, 21.475392188771657],[121.73297839554034, 20.48187640003869]]
+    }])
   }, [])
 
   return (
     <div className="app">
       <Mapr
-        ondblclick={handleDblclick}
+        shapeData={ shapeData }
         afterDraw={ handleAfterDraw }
         onClick={ handleClick }
         haslegend={ true }

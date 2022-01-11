@@ -66,10 +66,13 @@ const HeatMap: FC = ({ projection, heatmapConfig }) => {
   )
 }
 
+let _id = 0
+
 const Mapr: FC = ({
   data, haslegend, legend,
-  hoverStyle, afterDraw, onClick, ondblclick,
-  hasHeatMap, heatmapConfig, transData
+  hoverStyle, afterDraw, onClick,
+  hasHeatMap, heatmapConfig, transData,
+  shapeData
 }) => {
   const [popData, setPopData] = useState({ name: '', value: ''})
   
@@ -88,11 +91,9 @@ const Mapr: FC = ({
   let shouldAppear = false
   let shaper = {}
   let isDraw = false
-  let _id = 0
+
   let mousestart = []
   let start = []
-  // 判断是双击还是鼠标抬起
-  let isdb = false
 
   // 0: rect, 1: circle, 2: polygon
   let drawType = [false, false, false]
@@ -193,9 +194,8 @@ const Mapr: FC = ({
   function closeDraw() {
     isDraw = false
     tools.clearDrawEvent()
-    // 关闭编辑模式的时候，把所有编辑点删除
-    d3.selectAll('.edit-circle').remove()
   }
+
   const openDraw = (type) => {
     isDraw = true
     svg.on("mousedown.zoom", null)
@@ -208,7 +208,6 @@ const Mapr: FC = ({
     tools.clearDrawEvent()
 
     if ([0, 1].indexOf(type) !== -1) {
-      // tools.rectCircleDblclick()
       type === 0 && (drawType = [true, false, false])
       type === 1 && (drawType = [false, true, false])
     }
@@ -216,6 +215,12 @@ const Mapr: FC = ({
       drawType = [false, false, true]
       tools.addPolygonEvent()
     }
+  }
+
+  // 开启编辑跟开启绘制的功能得分开，关闭也一样
+  function closeEdit() {
+    // 关闭编辑模式的时候，把所有编辑点删除
+    d3.selectAll('.edit-circle').remove()
   }
 
   function addRect(xy, width=0, height=0, id) {
@@ -229,6 +234,8 @@ const Mapr: FC = ({
     _id = _id + 1;
     const attrId = id ? id.split('#')[1] : `id_${_id}`
     const hId = id || `#id_${_id}`
+
+    console.log('_id:', _id)
 
     d3.select('#shape')
     .append("rect")
@@ -258,7 +265,6 @@ const Mapr: FC = ({
     const [lon, lat] = projection(xy);
     const attrId = id ? id.split('#')[1] : `id_${_id}`
     const hId = id || `#id_${_id}`
-
 
     d3.select('#shape')
     .append("circle")
@@ -390,7 +396,6 @@ const Mapr: FC = ({
     },
     rectMm(e) {
       // 矩形的宽高也是按照鼠标的点来计算的，如果需要就自己按照经纬度去计算真实的宽高
-      isdb = false
       const [lon1, lat1] = mousestart
       const [x1, y1] = start
 
@@ -430,9 +435,6 @@ const Mapr: FC = ({
     },
     rectMu(e) {
       shouldAppear = false;
-      if (isdb) {
-        return
-      }
       const width = shaper.d3Element.attr('width')
       const height = shaper.d3Element.attr('height')
 
@@ -460,8 +462,7 @@ const Mapr: FC = ({
           editPoints: [x1, y1]
         }])
         stepArr.push(shaper.id)
-        afterDraw(shaper, shapeArr, historyi)
-        console.log('stepArr111:', stepArr)
+        afterDraw({shaper, shapeArr, historyi, closeDraw})
         return
       }
       shaper.d3Element.remove()
@@ -481,7 +482,6 @@ const Mapr: FC = ({
 
     },
     circleMm(e) {
-      isdb = false
       if (shouldAppear) {
         const mouse = d3.pointer(e, svg.node());
         const [x, y] = projection.invert(mouse)
@@ -496,9 +496,6 @@ const Mapr: FC = ({
     },
     circleMu(e) {
       shouldAppear = false
-      if (isdb) {
-        return
-      }
       const r = shaper.d3Element.attr('r')
       // const mouse = d3.pointer(e, svg.node());
       const [x, y] = projection.invert(d3.pointer(e, svg.node()))
@@ -520,7 +517,7 @@ const Mapr: FC = ({
           editPoints: [x, y]
         }])
         stepArr.push(shaper.id)
-        afterDraw(shaper, shapeArr, historyi)
+        afterDraw({shaper, shapeArr, historyi, closeDraw})
         return
       }
       // 点击的时候会触发mouseDown,所以会加进来很多当前图形，所以在up的时候，就把这些图形移除
@@ -600,11 +597,9 @@ const Mapr: FC = ({
               editPoints: shaper.points
             }])
             stepArr.push(shaper.id)
-            afterDraw(shaper, shapeArr, historyi)
+            afterDraw({shaper, shapeArr, historyi, closeDraw})
           }
         }
-        // 双击的时候，不知道该怎么改
-        // tools.dblclickEv(e)
         shaper = {}
       })
     },
@@ -644,46 +639,6 @@ const Mapr: FC = ({
         }
       });
       svg.on("mouseup", null);
-    },
-    clearCurrentShape() {
-      if (!shapeArr.length) {
-        console.log('没有图形可以删除啦1～')
-        return
-      }
-      /*
-      * 选中了之后，再去删除当前的，目前是还是删的最后一个，应该是删选中的那个？
-      * 应该是删除选中的那个，如果没有选中的那个，才去删除最后那个
-      */
-      const lastShape = shapeArr.length - 1
-      shaper.id ? shaper.d3Element.remove() : shapeArr[lastShape]?.shaper.d3Element.remove();
-      /*
-      * 原来是根据edit-circle-${index}来移除的，但是其实在删除当前图形的时候
-      * 删除了编辑点后，没有其他编辑点了，不会去绘制下一个的编辑点
-      * 所以不需要特地去删除某个图形的编辑点，直接移除所有编辑点即可
-      */
-      /*
-      * 从列表里删除之后，也应该同时从historyi里删除？
-      * 要不暂时就设计成删除当前图形就是删除该图形的全部状态吧
-      * 因为如果只删除当前图形的最后一个状态，那跟回退好像没啥区别啊，如果后期使用的时候有问题再说吧
-      */
-      d3.selectAll('.edit-circle').remove()
-      // 从列表里删除
-      const id = shaper.id || shapeArr[lastShape].shaper.id
-      shapeArr = shapeArr.filter((i) => i.shaper.id !== id)
-      historyi.delete(id)
-      stepArr = stepArr.filter((i) => i !== id)
-      // 记得把back之后的编辑点也加上去吧
-      /*
-      * 把shaper重置为当前最后一个，这里要不要把编辑点加到现在当前图形上啊
-      * 因为删除了当前图形没有编辑点，用户不知道当前图形是哪个 
-      */
-      if (shapeArr.length > 0) {
-        const obj = shapeArr[shapeArr.length - 1]
-        shaper = obj.shaper
-        tools.reOpenEdit(obj)
-        return
-      }
-      console.log('没有图形可以删除啦2～')
     },
     clearAllShape() {
       d3.selectAll('.shaper').remove()
@@ -799,7 +754,7 @@ const Mapr: FC = ({
         editPoints: editPoints[type]
       }])
       stepArr.push(shaper.id)
-      afterDraw(shaper, shapeArr, historyi)
+      afterDraw({shaper, shapeArr, historyi, closeDraw})
       console.log('88:', historyi, shapeArr)
     },
     findShape(id) {
@@ -869,42 +824,44 @@ const Mapr: FC = ({
       * 把对应的图形先删除，然后把操作顺序里做后一个删除，再把编辑按钮都删除
       * 2021-12-27: 这里原来其实走了很多弯路，以前的逻辑的注释都删了，只能说太年轻，收获就是：操作日志yyds
       */
-      // let editElement = cItem[cItem?.length - 1]?.editElement || []
-      console.log('cKey:', stepArr, cKey)
       // 删掉当前的图形
       d3.select(cKey).remove()
       stepArr.splice(stepArr.length - 1, 1)
-      // editElement.forEach((i) => i.remove())
-      d3.selectAll('.edit-circle').remove()
 
       if (cItem.length > 0) {
         historyi.get(cKey).splice(cItem.length - 1, 1)
         cItem = historyi.get(cKey)
         // 先删再画，取最后一个的时候就比较方便，所以就得再次判断cItem的长度
-        // cItem.length && tools.backDraw(cItem[cItem.length - 1])
+        cItem.length && tools.backDraw(cItem[cItem.length - 1])
         if (cItem.length) {
           tools.backDraw(cItem[cItem.length - 1])
-          // tools.reOpenEdit(cItem[cItem.length - 1])
-        } else {
-          // const lsi = historyi.get(stepArr[stepArr.length - 1])
-          // stepArr.length && tools.reOpenEdit(lsi[lsi.length - 1])
+          // const { editElement } = cItem[cItem.length - 1]
+          // editElement.forEach((i) => i.remove())
         }
-        
       }
-      // 当该id的记录都删完了后，就从history跟shapeArr里把该id的项删掉
+      // 当该id的记录都删完了后，就从history跟shapeArr里把该id的项删掉,吧所有的编辑点也删除
       if (stepArr.indexOf(cKey) === -1) {
         historyi.delete(cKey)
-        shapeArr = shapeArr.filter((i) => i.shaper.id !== cKey)
+        shapeArr = shapeArr.filter((i, index) => {
+          if (i.shaper.id === cKey) {
+            // 如果这个图形的历史状态都回退完了，就把她他的编辑点删掉
+            d3.selectAll(`.edit-circle-${index}`).remove()
+          }
+          return i.shaper.id !== cKey
+        })
       }
     },
     backDraw(obj) {
       let {
         shaper: { type, x, y, width, height, center, r, id },
-        editPoints
+        editPoints,
+        editElement
       } = _.cloneDeep(obj)
-
+      
       if (type === 'rect') {
         shaper = addRect([x, y], width, height, id)
+        const [lon, lat] = projection(editPoints)
+        editElement[0].attr('cx', lon).attr('cy', lat)
         /*
         * 编辑点的处理好麻烦，因为在数据层面，没有图形跟编辑点的组合结构，直接回退的时候关闭得了
         * 还有种办法，就是找到图形上的一个点，然后把编辑点绘制到这个点上
@@ -921,87 +878,71 @@ const Mapr: FC = ({
 
       if (type === 'circle') {
         shaper = addCircle(center, r, id)
+        const [lon, lat] = projection(editPoints)
+        editElement[0].attr('cx', lon).attr('cy', lat)
       }
 
       if (type === 'polygon') {
         shaper = addPolygon(editPoints, id)
-      }
-    },
-    reOpenEdit(obj) {
-      const { editPoints, shaper: { type, id } } = obj
-      const { index } = tools.findShape(id.split('#')[1])
-      console.log('index:', index)
-      if (type === 'rect') {
-        openEdit({ xy: editPoints })
-      }
-
-      if (type === 'circle') {
-        openEdit({ xy: editPoints })
-      }
-
-      if (type === 'polygon') {
-        editPoints.forEach((i, is) => {
-          openEdit({ xy: i, currentShapeIndex: index, pointIndex: is })
+        editPoints.forEach((i, index) => {
+          const [lon, lat] = projection(i)
+          editElement[index].attr('cx', lon).attr('cy', lat)
         })
       }
     },
-    /*
-    * 原生的双击会触发单击事件
-    * 模拟的双击包含鼠标的mouseUp事件。。。不知道说啥好，呕
-    * 只能靠isdb来区分事件了
-    */
-    dblclickEv(e) {
-      const { target } = e
-      const { id } = target
-      const flag = d3.select(target).attr('class').indexOf('shaper') !== -1
-      // let obj = {}
-      isdb = true
+    // reOpenEdit(obj) {
+    //   const { editPoints, shaper: { type, id } } = obj
+    //   const { index } = tools.findShape(id.split('#')[1])
+    //   console.log('index:', index)
+    //   if (type === 'rect') {
+    //     openEdit({ xy: editPoints })
+    //   }
 
-      // 只有双击到shaper上的时候才执行
-      if (flag) {
-        const { it: { shaper }, index, editPoints } = tools.findShape(id)
-        const { type } = shaper
+    //   if (type === 'circle') {
+    //     openEdit({ xy: editPoints })
+    //   }
 
-        // 把当前图形对应的画笔功能打开
-        type === 'rect' && (drawType = [true, false, false])
-        type === 'circle' && (drawType = [false, true, false])
-        type === 'polygon' && (drawType = [false, false, true])
-        
-        // 打开自己的编辑点之前，把其他图形的编辑点关闭,并把聚焦状态移除
-        tools.clearEditPoints()
-        // 给图形添加边框
-        shaper.d3Element.attr('stroke-width', 4)
-        if (['circle', 'rect'].indexOf(type) !== -1) {
-          openEdit({ xy: editPoints, currentShapeIndex: index })
-        } else {
-          editPoints.forEach((i, is) => {
-            openEdit({ xy: i, currentShapeIndex: index, pointIndex: is })
-          })
-        }
-        // 双击的时候把对象赋值给shaper，给clearCurrentShaper用
-        // obj = shaper
-        ondblclick(shaper, shapeArr, historyi)
-      }
-      // polygon的时候，shaper是被清空的，polygon也没有mouseUp事件，所以不需要清空shaper
-      shaper.type !== 'polygon' && shaper?.d3Element?.remove()
-      // shaper = obj
-      // 不行啊，双击的时候不去选中shaper, 删除当前图形就做不了啊
-      // 算了，直接屏蔽这个功能算了，反正我看现有业务也没有这个功能
-      // shaper = {}
-    },
-    rectCircleDblclick() {
-      const polygonClick = clickcancel()
-      d3.select('svg').call(polygonClick)
-      polygonClick.on("dblclick", (e) => {
-        tools.dblclickEv(e)
-      })
-    },
+    //   if (type === 'polygon') {
+    //     editPoints.forEach((i, is) => {
+    //       openEdit({ xy: i, currentShapeIndex: index, pointIndex: is })
+    //     })
+    //   }
+    // },
     clearEditPoints() {
       // 绘制之后把之前其他的编辑点全部移除,再去添加自己的编辑点
       // d3.selectAll('.edit-circle').remove()
       // d3.selectAll('.shaper').attr('stroke-width', 0)
     },
   }
+
+  const addShape = () => {
+    shapeData.forEach((i) => {
+      const { type } = i
+      
+      if (type === 'rect') {
+        const { x, y, width, height } = i
+        addRect([x, y], width, height)
+      }
+
+      if (type === 'circle') {
+        const { center, r } = i
+        addCircle(center, r)
+      }
+
+      if (type === 'polygon') {
+        const { points } = i
+        addPolygon(points)
+      }
+      _id = _id + 1
+    })
+  }
+
+  useEffect(() => {
+    addShape()
+    console.log('shapeData:', shapeData)
+    // 执行了两次，看了下shapeData是一样的啊，没变化啊，奇怪
+    // 因为没有放到useState里。。。。。无语
+  }, [shapeData])
 
   return (
     <>
@@ -1014,7 +955,6 @@ const Mapr: FC = ({
 
       <Button type="text" onClick={ tools.back }>back</Button>
 
-      {/* <Button type="text" onClick={ tools.clearCurrentShape }>clearCurrentShape</Button> */}
       <Button type="text" onClick={ tools.clearAllShape }>clearAllShape</Button>
 
       <p> default: open draw status</p>
@@ -1027,32 +967,6 @@ const Mapr: FC = ({
           viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"
           onMouseMove={handleBlankbord}
         >
-          <defs>
-            <radialGradient id="radialGradient" cx="0.5" cy="0.5" r="1" fx="0.5" fy="0.5">
-              <stop offset="0" stopColor="blue" />
-              <stop offset="1" stopColor="#fff" />
-            </radialGradient>
-
-            <marker id="markerArrow" markerWidth="13" markerHeight="13" refX="2" refY="6" orient="auto"> 
-              <path d="M2,2 L2,11 L10,6 L2,2" style={{ fill: '#000000' }}>
-              <animate attributeName="cx" from="0" to="100" dur="5s" repeatCount="indefinite" />
-              </path> 
-            </marker> 
-            
-
-          </defs>
-          
-
-          {/* <line x1="0" y1="0" x2="100" y2="100" style={{ stroke:'red', markerEnd: 'url(#markerArrow)' }}></line> */}
-        
-          {/* <g>
-            <path fill="transparent" stroke="#888888" strokeWidth="1" d="M10 80 Q 77.5 10, 145 80 T 280 80" className="path"></path>
-            <foreignObject x="0" y="0" width="1000" height="1000">
-              <div className="ball" style={{ offsetPath: "path('M10 80 Q 77.5 10, 145 80 T 280 80')" }}></div>
-            </foreignObject>
-          </g> */}
-
-
           <g id="drager"
             onMouseDown={(e) => { handleDbMDown(e) }}
             onMouseMove={(e) => { handleDbMMove(e) }}
@@ -1096,33 +1010,7 @@ const Mapr: FC = ({
               </g>
               <g id="shape"></g>
               <g id="editor"></g>
-              {/* <g id="trans" className="trans">
-                {
-                  transData.map((i, index) => {
-                    const [start, end] = i
-                    const [x1, y1] = projection(start.point)
-                    const [x2, y2] = projection(end.point)
-                    // const flag = transArr.indexOf('x1')
-                    // !flag && transArr.push(x1)
-                    
-                    return (
-                      <>
-                      <polyline fill="none" stroke="red" points={`${x1},${y1} ${x2},${y2}`}/>
-                      <polyline fill="none" stroke="red" points={`${x1},${y1} ${x2},${y2}`} markerEnd='url(#markerArrow)'/>
-                      </>
-                    )
-
-                    return (
-                      <>
-                        <path fill="transparent" key={index} stroke="red" strokeWidth="1" d={`M${x1} ${y1} ${x2} ${y2}`} className="path"></path>
-                        <foreignObject x="0" y="0" width="1000" height="1000" key={`f_${i}`}>
-                          <div  className="ball" style={{ offsetPath: `path('M${x1} ${y1} ${x2} ${y2}')` }}></div>
-                        </foreignObject>
-                      </>
-                    )
-                  })
-                }
-              </g> */}
+              
               <g className="div-heatmap">
                 <foreignObject x="0" y="0" width="1000" height="1000">
                   {
