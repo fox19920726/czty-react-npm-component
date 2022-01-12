@@ -449,8 +449,6 @@ const Mapr: FC = ({
           editPoints: [x1, y1]
         })
 
-        tools.clearEditPoints()
-
         shaper.d3Element.attr('stroke-width', 4)
 
         const { d3Element } = openEdit({ xy: [x1, y1] })
@@ -506,7 +504,6 @@ const Mapr: FC = ({
           editPoints: [x, y]
         })
 
-        tools.clearEditPoints()
         shaper.d3Element.attr('stroke-width', 4)
         const { d3Element } = openEdit({ xy: [x, y] })
 
@@ -573,8 +570,6 @@ const Mapr: FC = ({
               shaper,
               editPoints: shaper.points
             })
-
-            tools.clearEditPoints()
 
             shaper.d3Element.attr('stroke-width', 4)
 
@@ -833,11 +828,6 @@ const Mapr: FC = ({
         cItem = historyi.get(cKey)
         // 先删再画，取最后一个的时候就比较方便，所以就得再次判断cItem的长度
         cItem.length && tools.backDraw(cItem[cItem.length - 1])
-        if (cItem.length) {
-          tools.backDraw(cItem[cItem.length - 1])
-          // const { editElement } = cItem[cItem.length - 1]
-          // editElement.forEach((i) => i.remove())
-        }
       }
       // 当该id的记录都删完了后，就从history跟shapeArr里把该id的项删掉,吧所有的编辑点也删除
       if (stepArr.indexOf(cKey) === -1) {
@@ -889,30 +879,7 @@ const Mapr: FC = ({
           editElement[index].attr('cx', lon).attr('cy', lat)
         })
       }
-    },
-    // reOpenEdit(obj) {
-    //   const { editPoints, shaper: { type, id } } = obj
-    //   const { index } = tools.findShape(id.split('#')[1])
-    //   console.log('index:', index)
-    //   if (type === 'rect') {
-    //     openEdit({ xy: editPoints })
-    //   }
-
-    //   if (type === 'circle') {
-    //     openEdit({ xy: editPoints })
-    //   }
-
-    //   if (type === 'polygon') {
-    //     editPoints.forEach((i, is) => {
-    //       openEdit({ xy: i, currentShapeIndex: index, pointIndex: is })
-    //     })
-    //   }
-    // },
-    clearEditPoints() {
-      // 绘制之后把之前其他的编辑点全部移除,再去添加自己的编辑点
-      // d3.selectAll('.edit-circle').remove()
-      // d3.selectAll('.shaper').attr('stroke-width', 0)
-    },
+    }
   }
 
   const addShape = () => {
@@ -939,7 +906,6 @@ const Mapr: FC = ({
 
   useEffect(() => {
     addShape()
-    console.log('shapeData:', shapeData)
     // 执行了两次，看了下shapeData是一样的啊，没变化啊，奇怪
     // 因为没有放到useState里。。。。。无语
   }, [shapeData])
