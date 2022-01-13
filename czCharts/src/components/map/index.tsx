@@ -3,7 +3,7 @@ import React, { FC, useEffect, useState } from 'react'
 import * as d3 from 'd3'
 import './index.scss'
 import clickcancel from '@/utils/cancelableClick'
-import _ from 'lodash'
+import _, { last } from 'lodash'
 import Heatmap from '@/utils/heatmap'
 
 const Legend: FC = ({ mapColor, text, rangeColor }) => {
@@ -67,6 +67,30 @@ const HeatMap: FC = ({ projection, heatmapConfig }) => {
 }
 
 let _id = 0
+let shapeArr = []
+ /*
+  * historyi用Map结构的原因是Map有顺序，普通对象无序（详见back方法2021-12-23的注释）
+  * 本来想的是直接取historyi的最后一个，后来发现，不能直接取最后一个（详见back方法2021-12-08跟2021-12-27的注释）
+  * 后来添加了操作日志stepArr后，就用不到顺序的特性了，所以Map结构跟普通对象结构都行
+  */
+let historyi = new Map()
+let stepArr = []
+
+let shouldAppear = false
+let shaper = {}
+let isDraw = false
+
+let mousestart = []
+let start = []
+
+// 0: rect, 1: circle, 2: polygon
+let drawType = [false, false, false]
+
+// polygon的坐标点存储
+let msPoints = []
+let points = []
+
+let transArr = []
 
 const Mapr: FC = ({
   data, haslegend, legend,
@@ -80,30 +104,6 @@ const Mapr: FC = ({
     throw Error("the haslegend's value is true. please config the legend, or you set the haslegend to false")
   }
   const { mapColor, text, formatter, rangeValue, rangeColor } = legend || {}
-  /*
-  * historyi用Map结构的原因是Map有顺序，普通对象无序（详见back方法2021-12-23的注释）
-  * 本来想的是直接取historyi的最后一个，后来发现，不能直接取最后一个（详见back方法2021-12-08跟2021-12-27的注释）
-  * 后来添加了操作日志stepArr后，就用不到顺序的特性了，所以Map结构跟普通对象结构都行
-  */
-  let historyi = new Map()
-  let stepArr = []
-
-  let shouldAppear = false
-  let shaper = {}
-  let isDraw = false
-
-  let mousestart = []
-  let start = []
-
-  // 0: rect, 1: circle, 2: polygon
-  let drawType = [false, false, false]
-  let shapeArr = []
-
-  // polygon的坐标点存储
-  let msPoints = []
-  let points = []
-
-  let transArr = []
 
   // 缩放事件
   let transform =  d3.zoomIdentity //{ k: 700, x: 0, y: 0} //
@@ -316,21 +316,6 @@ const Mapr: FC = ({
       points
     }
   }
-
-  // 暂时没用上线条的绘制功能就注释了
-  // function addLine({ x1, y1, x2, y2}) {
-  //   const [lon1, lat1] = projection([x1, y1])
-  //   const [lon2, lat2] = projection([x2, y2])
-  //   _id = _id + 1
-  //   d3.select('#shape')
-  //   .append("line")
-  //   .attr('id', `id_${_id}`)
-  //   .attr('class', 'line shaper')
-  //   .attr('x1', lon1)
-  //   .attr('y1', lat1)
-  //   .attr('x2', lon2)
-  //   .attr('y2', lat2);
-  // }
 
   function openEdit({ xy, currentShapeIndex, pointIndex }) {
     const [lon, lat] = projection(xy)
@@ -654,6 +639,7 @@ const Mapr: FC = ({
       * 上面的想法是在想屁吃，多边形的单击是绘制，所以单击不能打开编辑，只能做双击
       */
       shaper = _.cloneDeep(shapeArr[currentShapeIndex].shaper)
+      console.log('shaper1:', shapeArr)
       /*
       * 在切换画笔的时候，会导致之前绘制的图形编辑功能失效
       * 所以在拖动编辑点的时候，不仅要判断是哪个图形在编辑，还要判断是什么类型的图形在编辑，打开它的编辑功能
@@ -750,7 +736,7 @@ const Mapr: FC = ({
       }])
       stepArr.push(shaper.id)
       afterDraw({shaper, shapeArr, historyi, closeDraw})
-      console.log('88:', historyi, shapeArr)
+      console.log('88:', historyi, shapeArr, stepArr)
     },
     findShape(id) {
       /*
@@ -812,6 +798,7 @@ const Mapr: FC = ({
 
       if (!historyi.size || !cItem) {
         console.log('不能回退更多啦1～')
+        tools.clearAllShape()
         return
       }
       /*
@@ -887,19 +874,66 @@ const Mapr: FC = ({
       const { type } = i
       
       if (type === 'rect') {
-        const { x, y, width, height } = i
-        addRect([x, y], width, height)
+        const { x, y, width, height, x1, y1 } = i
+        const item = _.cloneDeep({ ...addRect([x, y], width, height), ...i })
+        shapeArr.push({
+          shaper: item,
+          editPoints: [x1, y1]
+        })
+        const did = `#id_${_id}`
+        stepArr.push(did)
+        const { d3Element } = openEdit({ xy: [x1, y1] })
+        historyi.set(did, [{
+          shaper: item,
+          editElement: [d3Element],
+          editPoints: [x1, y1]
+        }])
       }
 
       if (type === 'circle') {
         const { center, r } = i
-        addCircle(center, r)
+        const item = _.cloneDeep({ ...addCircle(center, r), ...i })
+        const [x, y] = projection(center)
+        const editPoint = projection.invert([x+r, y])
+        shapeArr.push({
+          shaper: item,
+          editPoints: editPoint
+        })
+        const did = `#id_${_id}`
+        stepArr.push(did)
+        const { d3Element } = openEdit({ xy: editPoint })
+        historyi.set(did, [{
+          shaper: item,
+          editElement: [d3Element],
+          editPoints: editPoint
+        }])
       }
 
       if (type === 'polygon') {
         const { points } = i
-        addPolygon(points)
+        const item = _.cloneDeep({ ...addPolygon(points), ...i })
+        const pts = []
+
+        shapeArr.push({
+          shaper: item,
+          editPoints: points
+        })
+        const did = `#id_${_id}`
+        stepArr.push(did)
+        // 得把多边形的编辑状态关闭，不然鼠标点击的时候，他就会消失。。。
+        d3.select(did).attr('class', 'polygon shaper')
+
+        points.forEach((i, index) => {
+          const { d3Element } = openEdit({ xy: i, pointIndex: index })
+          pts.push(d3Element)
+        })
+        historyi.set(did, [{
+          shaper: item,
+          editElement: pts,
+          editPoints: points
+        }])
       }
+      
       _id = _id + 1
     })
   }
