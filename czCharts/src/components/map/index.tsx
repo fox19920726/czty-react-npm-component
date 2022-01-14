@@ -5,6 +5,7 @@ import './index.scss'
 import clickcancel from '@/utils/cancelableClick'
 import _, { last } from 'lodash'
 import Heatmap from '@/utils/heatmap'
+import MigrationLine from '@/components/migrate'
 
 const Legend: FC = ({ mapColor, text, rangeColor }) => {
   return (
@@ -870,7 +871,12 @@ const Mapr: FC = ({
   }
 
   const addShape = () => {
-    shapeData.forEach((i) => {
+    if (shapeData && !(shapeData instanceof Array)) {
+      throw Error('shapeData need to be an Array, please check it')
+    }
+    // 绘制前先清空图形，防止图形重复绘制
+    d3.selectAll('.shaper').remove()
+    shapeData?.forEach((i) => {
       const { type } = i
       
       if (type === 'rect') {
@@ -1017,6 +1023,13 @@ const Mapr: FC = ({
                     hasHeatMap ? <HeatMap { ...{ projection, heatmapConfig } } /> : null
                   }
                 </foreignObject>
+              </g>
+              <g className="div-migrate">
+
+                  {
+                    <MigrationLine start={[29, 121]} end={[85, 33]} color={'rgb(247, 156, 49)'} Ncircles={1.04}/>
+                  }
+
               </g>
             </g>
           </g>

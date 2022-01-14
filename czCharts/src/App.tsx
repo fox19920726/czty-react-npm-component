@@ -81,6 +81,7 @@ const App: FC = () => {
 
   // 绘制后
   const handleAfterDraw = ({shaper, shapeArr, historyi, closeDraw}) => {
+    // 这里的绘制的图形的宽高，半径等都不是真正的地理值，需要自己转化一下
     // console.log('finish draw:', shaper, shapeArr, historyi)
   }
 
