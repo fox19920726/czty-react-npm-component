@@ -67,11 +67,16 @@ const App: FC = () => {
   }
 
   // 迁徙图数据格式（暂时没这个功能）
-  const transData = [
+  const migrateData = [
     [{ name: '杭州', point: [121, 29] }, { name: '新疆', point: [82, 40] }],
+    [{ name: '新疆', point: [82, 40] }, { name: '杭州', point: [121, 29] }],
     [{ name: '黑龙江', point: [127, 47]}, { name: '云南', point: [101, 23] }],
+    [{ name: '云南', point: [101, 23] }, { name: '黑龙江', point: [127, 47]}],
     [{ name: '新疆', point: [82, 40] }, { name: '云南', point: [101, 23] }]
   ]
+
+  // 类型有：line、curve（直线、曲线）
+  const migrateStyle = 'curve'
 
   // 地图区域的经纬度数据
   const getdata = async () => {
@@ -122,8 +127,10 @@ const App: FC = () => {
         data={data}
         legend={legend}
         hoverStyle={hoverStyle}
-        hasHeatMap = {true}
+        hasHeatMap = {false}
         heatmapConfig={heatmapConfig}
+        migrateData={migrateData}
+        migrateStyle={migrateStyle}
       />
     </div>
   )

@@ -96,10 +96,12 @@ let transArr = []
 const Mapr: FC = ({
   data, haslegend, legend,
   hoverStyle, afterDraw, onClick,
-  hasHeatMap, heatmapConfig, transData,
+  hasHeatMap, heatmapConfig,
+  migrateData, migrateStyle,
   shapeData
 }) => {
   const [popData, setPopData] = useState({ name: '', value: ''})
+  const [migrate, setMigrate] = useState(migrateData)
   
   if (haslegend && !legend) {
     throw Error("the haslegend's value is true. please config the legend, or you set the haslegend to false")
@@ -235,8 +237,6 @@ const Mapr: FC = ({
     _id = _id + 1;
     const attrId = id ? id.split('#')[1] : `id_${_id}`
     const hId = id || `#id_${_id}`
-
-    console.log('_id:', _id)
 
     d3.select('#shape')
     .append("rect")
@@ -944,11 +944,35 @@ const Mapr: FC = ({
     })
   }
 
+  const handleMigrate = () => {
+    const data = _.cloneDeep(migrate)
+    const strArr = migrate.map((i) => {
+      const [s, e] = i
+      const arr = [s.name, e.name]
+      // 按中文拼音排序
+      return arr.sort((a, b) => a.localeCompare(b,'zh')).join(',')
+    })
+
+    strArr.some((i, index) => {
+      if (strArr.indexOf(i) !== index) {
+        const st = strArr.indexOf(i)
+        data[st][0].flag = 1
+        data[st][1].flag = 1
+        data[index][0].flag = 2
+        data[index][1].flag = 2
+        setMigrate(data)
+      }
+    })
+  }
+
   useEffect(() => {
     addShape()
-    // 执行了两次，看了下shapeData是一样的啊，没变化啊，奇怪
-    // 因为没有放到useState里。。。。。无语
   }, [shapeData])
+
+  useEffect(() => {
+    handleMigrate()
+    // 原本应该根据migrate来执行的，但是会报错rerender，先这样吧
+  }, [])
 
   return (
     <>
@@ -1025,11 +1049,24 @@ const Mapr: FC = ({
                 </foreignObject>
               </g>
               <g className="div-migrate">
-
-                  {
-                    <MigrationLine start={[29, 121]} end={[85, 33]} color={'rgb(247, 156, 49)'} Ncircles={1.04}/>
-                  }
-
+                {
+                  migrate.map((i, index) => {
+                    const [s, e] = i
+                    return (
+                      <MigrationLine
+                        migrateStyle={migrateStyle}
+                        key={index}
+                        start={s.point}
+                        end={e.point}
+                        color={'red'}
+                        index={index}
+                        projection={projection}
+                        dV={e.flag === 2 ? 5 : -5 }
+                        getDistance={tools.getDistance}
+                      />
+                    )
+                  })
+                }
               </g>
             </g>
           </g>

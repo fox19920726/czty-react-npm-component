@@ -1,77 +1,74 @@
 import React, { FC, useEffect, useState } from 'react';
-import * as d3 from 'd3';
+import * as d3 from 'd3'
+import { destination, point, bearing, greatCircle } from '@turf/turf'
 
 function translateAlong(path) {
-	var l = path.getTotalLength();
+	var l = path.getTotalLength()
 	return function(d, i, a) {
 		return function(t) {
-			var p = path.getPointAtLength(t * l);
-			return "translate(" + p.x + "," + p.y + ")";
+			const { x, y } = path.getPointAtLength(t * l)
+			return `translate(${x},${y})`
 		};
 	};
 }
 
-const MigrationLine: FC = ({ start, end, color, Ncircles }) => {
-    const [animate, setAnimate] = useState(true)
-    const duration = 3000
-		const line = d3.line().curve(d3.curveBasis)
-	  const [x1, y1] = start
+const MigrationLine: FC = ({ start, end, color, projection, index, migrateStyle, dV, getDistance }) => {
+    const duration = 5000
+		// 这里的line方法，如果希望得到曲线就line([start, middle, end])
+		// const line = d3.line().curve(d3.curveBasis)
+		// const line = d3.line().curve(d3.curveBundle.beta(0.5))
+		const line = d3.line().curve(d3.curveCatmullRom.alpha(0))
+		const [x1, y1] = start
 		const [x2, y2] = end
-		const middle = [(x1 + x2)/2, (y1 + y2)/2-200]
+		const middle = [(x1 + x2)/2, (y1 + y2)/2 + dV]
 
     const transform = (circle, delay) => {
-           const [ x1, y1 ] = start;
-        d3.select(circle)
-          .attr("transform", `translate(${x1}, ${y1})`)
-          .transition()
-          .delay(delay)
-          .duration(duration)
-          .attrTween("transform", translateAlong(document.querySelector('.path')))
-          .on("end", () => {
-              if (animate) {
-                  transform(circle, 0);
-              }
-          });
+			d3.select(circle)
+				.transition()
+				.delay(delay)
+				.duration(duration)
+				.attrTween("transform", translateAlong(document.querySelector(`.migrate-path-${index}`), projection))
+				.on("end", () => {
+					transform(circle, 0)
+				})
     }
     useEffect(() => {
-        // const delayDither = duration*Math.random()
-        // const spread = duration/Ncircles
-
-        // d3.range(delayDither, duration+delayDither, spread)
-        //   .forEach((delay, i) =>{
-				// 		console.log('ee:', delay)
-				// 		transform(document.querySelector(`.circles-${i}`), delay)
-				// 	});
-
-
-				transform(document.querySelector('.circles'), 584)
+			// 这里的584原来是根据Ncircles字段来计算的，这里直接写定值了
+			transform(document.querySelector(`.migrate-circles-${index}`), 500)
 		}, [])
 
 		return (
-			<g>
-				{/* {
-					d3.range(Ncircles).map(i => (
-						<circle
-							r="3"
-							style={{fill: color, fillOpacity: 0.6}}
-							className={`circles-${i}`}
-							key={`circle-${i}`}
-						/>
-					))
-				} */}
+			<>
 				<circle
-					r="3"
-					style={{fill: color, fillOpacity: 0.6}}
-					className={'circles'}
+					r="10"
+					style={{fill: color, fillOpacity: 0.8}}
+					className={`migrate-circles-${index}`}
 				/>
-				<path
-					d={line([start, middle, end])}
-					style={{ stroke: color, strokeWidth: '1.6px', strokeOpacity: 0.4, fillOpacity: 0 }}
-					className="path"
-				/>
-			</g>
+				{
+					// <circle
+					// 	r={Math.round(getDistance(projection(middle), projection(start)))}
+					// 	cx={projection(middle)[0]}
+					// 	cy={projection(middle)[1]}
+					// 	style={{fill: color, fillOpacity: 0.8}}
+					// 	className={`cc-${index}`}
+					// />
+				}
+				{
+					!migrateStyle || migrateStyle === 'line' ? 
+					<path
+						d={line([projection(start), projection(end)])}
+						style={{ stroke: color, strokeWidth: '2px', strokeOpacity: 0.4, fillOpacity: 0 }}
+						className={`migrate-path-${index}`}
+					/>
+					: 
+					<path
+						d={line([projection(start), projection(middle), projection(end)])}
+						style={{ stroke: color, strokeWidth: '2px', strokeOpacity: 0.4, fillOpacity: 0}}
+						className={`migrate-path-${index}`}
+					/>
+				}
+			</>
 		)
 };
-
 
 export default MigrationLine;
