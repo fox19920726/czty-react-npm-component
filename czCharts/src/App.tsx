@@ -1,12 +1,16 @@
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, useEffect, useRef, useState } from 'react'
 import 'antd/dist/antd.css'
 import '@/styles/App.scss'
 import * as d3 from 'd3'
 import Mapr from '@/components/map'
+import { Button } from 'antd'
+
 
 const App: FC = () => {
   const [data, setData] = useState([])
   const [shapeData, setShapeData] = useState([])
+  // 读取子组建抛出来的东西
+  const childFn = useRef()
 
   // 图例跟地图的颜色，目前是根据数据里的size分配的颜色，图例的文字
   const legend = {
@@ -95,6 +99,10 @@ const App: FC = () => {
     console.log('click:', point, item)
   }
 
+  const handleClear = () => {
+    childFn.current.clearAllShape()
+  }
+
   useEffect(() => {
     getdata()
     setShapeData([{
@@ -120,6 +128,7 @@ const App: FC = () => {
   return (
     <div className="app">
       <Mapr
+        ref={childFn}
         shapeData={ shapeData }
         afterDraw={ handleAfterDraw }
         onClick={ handleClick }
@@ -129,9 +138,12 @@ const App: FC = () => {
         hoverStyle={hoverStyle}
         hasHeatMap = {false}
         heatmapConfig={heatmapConfig}
+        hasMigrate={false}
         migrateData={migrateData}
         migrateStyle={migrateStyle}
-      />
+      />  
+      <Button type="text" onClick={ handleClear }>clearAllShape</Button>
+
     </div>
   )
 }

@@ -12,7 +12,7 @@ function translateAlong(path) {
 	};
 }
 
-const MigrationLine: FC = ({ start, end, color, projection, index, migrateStyle, dV, getDistance }) => {
+const MigrationLine: FC = ({ start, end, color, projection, index, migrateStyle, dV }) => {
     const duration = 5000
 		// 这里的line方法，如果希望得到曲线就line([start, middle, end])
 		// const line = d3.line().curve(d3.curveBasis)
@@ -20,7 +20,13 @@ const MigrationLine: FC = ({ start, end, color, projection, index, migrateStyle,
 		const line = d3.line().curve(d3.curveCatmullRom.alpha(0))
 		const [x1, y1] = start
 		const [x2, y2] = end
-		const middle = [(x1 + x2)/2, (y1 + y2)/2 + dV]
+		// const middle = [(x1 + x2)/2, (y1 + y2)/2 + dV]
+		let middle = []
+		if (x1 < x2) {
+			middle = [(x1 + x2)/2, (y1 + y2)/2 + dV]
+		} else {
+			middle = [(x1 + x2)/2 + 4, (y1 + y2)/2 + dV]
+		}
 
     const transform = (circle, delay) => {
 			d3.select(circle)

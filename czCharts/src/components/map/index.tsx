@@ -1,5 +1,5 @@
 import { Button, Steps } from 'antd'
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import * as d3 from 'd3'
 import './index.scss'
 import clickcancel from '@/utils/cancelableClick'
@@ -93,13 +93,13 @@ let points = []
 
 let transArr = []
 
-const Mapr: FC = ({
+let Mapr: FC = ({
   data, haslegend, legend,
   hoverStyle, afterDraw, onClick,
   hasHeatMap, heatmapConfig,
-  migrateData, migrateStyle,
+  hasMigrate, migrateData, migrateStyle,
   shapeData
-}) => {
+}, ref) => {
   const [popData, setPopData] = useState({ name: '', value: ''})
   const [migrate, setMigrate] = useState(migrateData)
   
@@ -198,6 +198,23 @@ const Mapr: FC = ({
     isDraw = false
     tools.clearDrawEvent()
   }
+
+  // <Button type="text" onClick={ closeDraw }>closeDraw</Button>
+  // <Button type="text" onClick={ openDraw }>openDraw</Button>
+
+  // <Button type="text" onClick={ () => { openDraw(0) } }>rect</Button>
+  // <Button type="text" onClick={ () => { openDraw(1) } }>circle</Button>
+  // <Button type="text" onClick={ () => { openDraw(2) } }>polygon</Button>
+
+  // <Button type="text" onClick={ tools.back }>back</Button>
+
+  // <Button type="text" onClick={ tools.clearAllShape }>clearAllShape</Button>
+
+  
+  useImperativeHandle(ref, () => ({
+    closeDraw,
+    clearAllShape: tools.clearAllShape
+  }))
 
   const openDraw = (type) => {
     isDraw = true
@@ -970,9 +987,12 @@ const Mapr: FC = ({
   }, [shapeData])
 
   useEffect(() => {
+    if (hasMigrate && !(migrate instanceof Array)) {
+      throw Error('migrateData need to be an Array object [{}], please check it')
+    }
     handleMigrate()
     // 原本应该根据migrate来执行的，但是会报错rerender，先这样吧
-  }, [])
+  }, [hasMigrate])
 
   return (
     <>
@@ -1050,7 +1070,7 @@ const Mapr: FC = ({
               </g>
               <g className="div-migrate">
                 {
-                  migrate.map((i, index) => {
+                  hasMigrate && migrate?.map((i, index) => {
                     const [s, e] = i
                     return (
                       <MigrationLine
@@ -1082,5 +1102,7 @@ const Mapr: FC = ({
     </>
   )
 }
+
+Mapr = forwardRef(Mapr)
 
 export default Mapr
